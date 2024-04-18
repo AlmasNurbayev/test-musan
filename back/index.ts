@@ -12,6 +12,7 @@ import { authJWT } from './middlewares/authJwt';
 import passport from 'passport';
 import { JwtStrategy } from './auth/strategies/jwt.strategy';
 import { NotesController } from './modules/notes/notes.controller';
+import rateLimit from 'express-rate-limit';
 
 declare module 'express-session' {
   interface Session {
@@ -26,10 +27,7 @@ function bootstrap() {
   app.use(express.json());
   app.use(cookieParser());
   app.use(session(config.redisSessions));
-  // JwtStrategyInit();
   passport.use(JwtStrategy);
-  //app.use(passport.initialize());
-
   app.use(passport.session());
 
   app.use(cors({ origin: config.front_url, credentials: true }));
@@ -41,8 +39,6 @@ function bootstrap() {
   app.use('/auth', AuthController());
   app.use('/notes', NotesController());
 
-  // app.use('/oauth', OauthController());
-  // app.use('/user', UserController());
   app.use(errorHandler);
   app.use(handler404);
 

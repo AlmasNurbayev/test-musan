@@ -8,3 +8,10 @@ export function error500(message: unknown, data: any): ResponseHTTP {
     data: data,
   };
 }
+
+export const tooManyRequest = {
+  error: true,
+  message: 'too many requests',
+  statusCode: 429,
+  data: null,
+};

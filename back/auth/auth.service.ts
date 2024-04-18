@@ -13,7 +13,7 @@ import {
   noRefreshToken,
   unauthorized,
 } from '../middlewares/exceptions/auth.exceptions';
-import { error500 } from '../middlewares/exceptions/common.exceptions';
+import { error500, tooManyRequest } from '../middlewares/exceptions/common.exceptions';
 import * as bcrypt from 'bcrypt';
 import { PrismaClient } from '@prisma/client';
 import { generateAccessToken, generateRefreshToken, verifyToken } from './jwt_helpers';
@@ -72,6 +72,17 @@ export class AuthService {
 
   async requestConfirm(query: ParsedQs) {
     const { login, type } = query;
+
+    const existConfirm = await this.redisConfirms.get(String(login));
+    if (existConfirm) {
+      const existConfirmObject = JSON.parse(existConfirm);
+      if (
+        existConfirmObject.created_at &&
+        Date.now() < existConfirmObject.created_at + config.auth.confirmDelayMS
+      ) {
+        return tooManyRequest; // в течение заданного времени нельзя генерировать новый код
+      }
+    }
 
     const confirm_code = Math.floor(Math.random() * 89999 + 10000);
     this.redisConfirms.set(

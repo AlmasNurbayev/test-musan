@@ -5,8 +5,6 @@ import { unauthorized } from './exceptions/auth.exceptions';
 import { JwtPayload } from '../shared/interfaces';
 
 export async function authJWT(req: Request, res: Response, next: NextFunction) {
-  console.log('authJWT');
-
   passport.authenticate(
     'jwt',
     { session: false },

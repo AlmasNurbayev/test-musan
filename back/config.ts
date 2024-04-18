@@ -8,6 +8,14 @@ export const config = {
   express_port_external: process.env.EXPRESS_PORT_EXTERNAL,
   front_url: process.env.FRONT_URL,
 
+  auth: {
+    confirmDelayMS: 1000 * 60, // 1 minute
+  },
+
+  notes: {
+    rateLimitCreate: 3, // requests per minute
+  },
+
   redisConfirms: {
     client: new Redis({
       port: 6379,
