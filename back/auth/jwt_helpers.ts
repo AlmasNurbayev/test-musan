@@ -3,7 +3,7 @@ import { JwtPayload } from '../shared/interfaces';
 import jwt from 'jsonwebtoken';
 
 export function generateAccessToken(payload: JwtPayload) {
-  return jwt.sign(payload, config.secret_jwt, { expiresIn: '1h' });
+  return jwt.sign(payload, config.secret_jwt, { expiresIn: '1d' });
 }
 
 export function generateRefreshToken(payload: JwtPayload) {

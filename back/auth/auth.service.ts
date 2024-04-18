@@ -142,6 +142,8 @@ export class AuthService {
         ...parsedConfirm,
         confirmed_at: Date.now(),
       }),
+      'EX',
+      60 * 60, // 1h
     );
     return {
       statusCode: 200,

@@ -3,6 +3,7 @@
 /db/data
 /cache
 /db
+/prometheus_data
 .env
 
 # Logs

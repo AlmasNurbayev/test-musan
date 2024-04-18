@@ -24,7 +24,12 @@ export class NotesService {
         user_id,
       },
     });
-    this.redisNotesCache.client.set(String(newNote.id), JSON.stringify(newNote));
+    this.redisNotesCache.client.set(
+      String(newNote.id),
+      JSON.stringify(newNote),
+      'EX',
+      60 * 60 * 24, // 1d);
+    );
     return {
       error: false,
       statusCode: 201,
@@ -97,7 +102,12 @@ export class NotesService {
     if (!updatedNote) {
       return notesNotFound;
     }
-    this.redisNotesCache.client.set(String(id), JSON.stringify(updatedNote));
+    this.redisNotesCache.client.set(
+      String(id),
+      JSON.stringify(updatedNote),
+      'EX',
+      60 * 60 * 24, // 1d
+    );
     return {
       error: false,
       statusCode: 200,
