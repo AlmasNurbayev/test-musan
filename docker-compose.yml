@@ -28,7 +28,7 @@ services:
 
   back:
     image: node:20.11.1
-    command: bash -c "npm run watch"
+    command: bash -c "npm install && npm run migrate:dev && npm run watch"
     depends_on:
       - 'db'
       - 'redis'
