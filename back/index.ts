@@ -21,7 +21,6 @@ import helmet from 'helmet';
 declare module 'express-session' {
   interface Session {
     user?: SessionUser;
-    // Другие свойства сессии, если есть
   }
 }
 
