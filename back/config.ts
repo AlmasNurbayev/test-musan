@@ -17,6 +17,15 @@ export const config = {
     }),
   },
 
+  redisNotesCache: {
+    client: new Redis({
+      port: 6379,
+      host: 'redis',
+      password: process.env.REDIS_PASSWORD || 'password',
+      db: 2,
+    }),
+  },
+
   redisSessions: {
     store: new RedisStore({
       client: new Redis({

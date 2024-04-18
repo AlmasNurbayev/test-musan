@@ -1,4 +1,4 @@
-import { LoginType } from "../auth/schemas/request_confirm.schema";
+import { LoginType } from '../auth/schemas/request_confirm.schema';
 
 export type ResponseHTTP = {
   error: boolean;

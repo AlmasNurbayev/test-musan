@@ -7,6 +7,8 @@ import { AuthRequestConfirmSchema } from './schemas/request_confirm.schema';
 import { AuthSubmitConfirmSchema } from './schemas/submit_confirm.schema';
 import { AuthLoginSchema } from './schemas/login.schema';
 import { authJWT } from '../middlewares/authJwt';
+import { error500 } from '../middlewares/exceptions/common.exceptions';
+import { ResponseHTTP } from '../shared/interfaces';
 
 export function AuthController() {
   const router = Router();
@@ -17,8 +19,13 @@ export function AuthController() {
     (req: Request, res: Response, next: NextFunction) => {
       validateSchema(req, res, next, AuthRegisterSchema);
     },
-    (req: Request, res: Response, next: NextFunction) => {
-      authService.register(req, res).catch(next);
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const result = await authService.register(req.body);
+        res.status(result.statusCode).send(result);
+      } catch (error) {
+        next(error);
+      }
     },
   );
 
@@ -27,8 +34,18 @@ export function AuthController() {
     (req: Request, res: Response, next: NextFunction) => {
       validateSchema(req, res, next, AuthLoginSchema);
     },
-    (req: Request, res: Response, next: NextFunction) => {
-      authService.login(req, res).catch(next);
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const result = await authService.login(req.body);
+        console.log(result);
+        if (result.statusCode === 200) {
+          res.cookie('token', result.data.refreshToken, { httpOnly: true });
+          req.session.user = result.data.user;
+        }
+        res.status(result.statusCode).send(result);
+      } catch (error) {
+        next(error);
+      }
     },
   );
 
@@ -41,8 +58,13 @@ export function AuthController() {
     (req: Request, res: Response, next: NextFunction) => {
       validateSchema(req, res, next, AuthRequestConfirmSchema);
     },
-    (req: Request, res: Response, next: NextFunction) => {
-      authService.requestConfirm(req, res).catch(next);
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const result = await authService.requestConfirm(req.query);
+        res.status(result.statusCode).send(result);
+      } catch (error) {
+        next(error);
+      }
     },
   );
 
@@ -51,20 +73,42 @@ export function AuthController() {
     (req: Request, res: Response, next: NextFunction) => {
       validateSchema(req, res, next, AuthSubmitConfirmSchema);
     },
-    (req: Request, res: Response, next: NextFunction) => {
-      authService.submitConfirm(req, res).catch(next);
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const result = await authService.submitConfirm(req.query);
+        res.status(result.statusCode).send(result);
+      } catch (error) {
+        next(error);
+      }
     },
   );
 
-  router.get('/refresh', (req: Request, res: Response, next: NextFunction) => {
-    authService.refresh(req, res).catch(next);
+  router.get('/refresh', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await authService.refresh(req.cookies);
+      res.status(result.statusCode).send(result);
+    } catch (error) {
+      next(error);
+    }
   });
 
-  router.get('/logout', (req: Request, res: Response, next: NextFunction) => {
-    authService.logout(req, res).catch(next);
+  router.get('/logout', (req: Request, res: Response) => {
+    req.session.destroy((err) => {
+      if (err) {
+        Logger.error(err);
+        res.status(400).send(error500('error logout', null));
+      }
+      const result: ResponseHTTP = {
+        error: false,
+        statusCode: 200,
+        message: 'success logout',
+        data: null,
+      };
+      res.status(200).send(result);
+    });
   });
 
-  Logger.info('auth controller mounted');
+  Logger.info('Users controller mounted');
 
   return router;
 }

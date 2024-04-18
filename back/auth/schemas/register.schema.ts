@@ -18,3 +18,5 @@ export const AuthRegisterSchema = z.object({
       }
     }),
 });
+
+export type AuthRegisterType = z.infer<typeof AuthRegisterSchema.shape.body>;

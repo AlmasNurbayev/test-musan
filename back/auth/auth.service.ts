@@ -1,12 +1,13 @@
-import Redis from 'ioredis';
 import { MailerService } from '../notifications/mailer.service';
 import { SmscService } from '../notifications/sms.service';
 import { Request, Response } from 'express';
 import { config } from '../config';
+import { ParsedQs } from 'qs';
 import { LoginType } from './schemas/request_confirm.schema';
 import {
   confirmNotFound,
   emailOrPhoneNotConfirmed,
+  emailOrPhoneNotFound,
   existUser,
   loginOrPasswordNotCorrect,
   noRefreshToken,
@@ -15,10 +16,11 @@ import {
 import { error500 } from '../middlewares/exceptions/common.exceptions';
 import * as bcrypt from 'bcrypt';
 import { PrismaClient } from '@prisma/client';
-import { ResponseHTTP } from '../shared/interfaces';
 import { generateAccessToken, generateRefreshToken, verifyToken } from './jwt_helpers';
 import { Logger } from '../shared/logger';
-import { session } from 'passport';
+import { AuthRegisterType } from './schemas/register.schema';
+import { AuthLoginType } from './schemas/login.schema';
+import { ParamsDictionary } from 'express-serve-static-core';
 
 export class AuthService {
   constructor(
@@ -28,53 +30,49 @@ export class AuthService {
     private prisma = new PrismaClient(),
   ) {}
 
-  public async register(req: Request, res: Response) {
-    const { name, email, phone, password } = req.body;
-    const confirmEmail = await this.redisConfirms.get(email);
-    const confirmPhone = await this.redisConfirms.get(phone);
-
-    if (!confirmEmail && !confirmPhone) {
-      res.status(400).send(emailOrPhoneNotConfirmed);
-      return;
-    }
-
-    if (confirmEmail && JSON.parse(String(confirmEmail)).confirmed_at === 0) {
-      res.status(400).send(emailOrPhoneNotConfirmed);
-      return;
-    }
-
-    if (confirmPhone && JSON.parse(String(confirmPhone)).confirmed_at === 0) {
-      res.status(400).send(emailOrPhoneNotConfirmed);
-      return;
-    }
+  public async register(body: AuthRegisterType) {
+    const { email, phone, password } = body;
 
     const exUser = await this.prisma.users.findFirst({
       where: {
-        OR: [{ email }, { phone }],
+        OR: [{ email }, { phone }, { email, phone }],
       },
     });
     if (exUser) {
-      res.status(400).send(existUser);
-      return;
+      return existUser;
+    }
+
+    const confirmEmail = await this.redisConfirms.get(String(email));
+    const confirmPhone = await this.redisConfirms.get(String(phone));
+
+    if (!confirmEmail && !confirmPhone) {
+      return emailOrPhoneNotConfirmed;
+    }
+    if (confirmEmail && JSON.parse(String(confirmEmail)).confirmed_at === 0) {
+      return emailOrPhoneNotConfirmed;
+    }
+
+    if (confirmPhone && JSON.parse(String(confirmPhone)).confirmed_at === 0) {
+      return emailOrPhoneNotConfirmed;
     }
 
     const hash = await bcrypt.hash(password, 10);
     const user = await this.prisma.users.create({
-      data: { ...req.body, password: hash },
+      data: { ...body, password: hash },
     });
 
     const { password: _, ...userWithoutPassword } = user; // eslint-disable-line
-    const result: ResponseHTTP = {
+    return {
       error: false,
       statusCode: 200,
       message: 'user created',
       data: userWithoutPassword,
     };
-    res.status(200).send(result);
   }
 
-  async requestConfirm(req: Request, res: Response) {
-    const { login, type } = req.query;
+  async requestConfirm(query: ParsedQs) {
+    const { login, type } = query;
+
     const confirm_code = Math.floor(Math.random() * 89999 + 10000);
     this.redisConfirms.set(
       String(login),
@@ -98,34 +96,33 @@ export class AuthService {
           html: `Код для подтверждения почты: <b>${confirm_code}</b>`,
         });
       } catch (error) {
-        res.status(200).send(error500(error, null));
+        return error500(error, null);
       }
     }
     if (type === LoginType.phone) {
       this.smscService.sendSms(String(login), `Код подтверждения: ${confirm_code}`);
     }
-    res.status(200).send({
+    return {
       statusCode: 200,
       message: 'code sended',
       error: false,
       data: null,
-    });
-    return;
+    };
   }
 
-  async submitConfirm(req: Request, res: Response) {
-    const { code, login, type } = req.query;
+  async submitConfirm(query: ParsedQs) {
+    const { code, login, type } = query;
     const confirmObject = await this.redisConfirms.get(String(login));
     if (!confirmObject) {
-      res.status(400).send(confirmNotFound);
+      return confirmNotFound;
     }
     const parsedConfirm = JSON.parse(confirmObject ? confirmObject : '');
 
     if (parsedConfirm.type !== type) {
-      res.status(400).send(confirmNotFound);
+      return confirmNotFound;
     }
     if (parsedConfirm.code !== parseInt(String(code))) {
-      res.status(400).send(confirmNotFound);
+      return confirmNotFound;
     }
 
     await this.redisConfirms.set(
@@ -135,17 +132,16 @@ export class AuthService {
         confirmed_at: Date.now(),
       }),
     );
-    res.status(200).send({
+    return {
       statusCode: 200,
       message: 'success confirmed',
       error: false,
       data: null,
-    });
-    return;
+    };
   }
 
-  async login(req: Request, res: Response) {
-    const { login, type, password } = req.body;
+  async login(body: AuthLoginType) {
+    const { login, type, password } = body;
     let user;
     if (type === LoginType.email) {
       user = await this.prisma.users.findFirst({ where: { email: login } });
@@ -153,12 +149,11 @@ export class AuthService {
       user = await this.prisma.users.findFirst({ where: { phone: login } });
     }
     if (!user) {
-      res.status(400).send(loginOrPasswordNotCorrect);
-      return;
+      return loginOrPasswordNotCorrect;
     }
     const isValidPassword = await bcrypt.compare(password, String(user?.password));
     if (!isValidPassword) {
-      res.status(400).send(loginOrPasswordNotCorrect);
+      return loginOrPasswordNotCorrect;
     }
 
     const accessToken = generateAccessToken({
@@ -171,71 +166,51 @@ export class AuthService {
       type,
       login,
     });
-    res.cookie('token', refreshToken, { httpOnly: true });
-
     const { password: _, ...userWithoutPassword } = user; // eslint-disable-line
-    req.session.user = userWithoutPassword;
-
-    const result: ResponseHTTP = {
+    return {
       error: false,
       statusCode: 200,
       message: 'login success',
       data: { user: userWithoutPassword, accessToken, refreshToken },
     };
-    res.status(200).send(result);
   }
 
-  async logout(req: Request, res: Response) {
-    req.session.destroy((err) => {
-      if (err) {
-        Logger.error(err);
-        res.status(400).send(error500('error logout', null));
+  async refresh(cookies: ParamsDictionary) {
+    const { token } = cookies;
+    if (!token) {
+      return noRefreshToken;
+    }
+    try {
+      const payload = await verifyToken(token);
+      let user;
+      if (payload.type === LoginType.email) {
+        user = await this.prisma.users.findFirst({ where: { email: payload.login } });
+      } else if (payload.type === LoginType.phone) {
+        user = await this.prisma.users.findFirst({ where: { phone: payload.login } });
       }
-      const result: ResponseHTTP = {
+      if (!user) {
+        return emailOrPhoneNotFound;
+      }
+      const refreshToken = generateRefreshToken({
+        id: user.id,
+        login: payload.login,
+        type: payload.type,
+      });
+      const accessToken = generateAccessToken({
+        id: user.id,
+        login: payload.login,
+        type: payload.type,
+      });
+      return {
         error: false,
         statusCode: 200,
-        message: 'success logout',
-        data: null,
+        data: { accessToken, refreshToken },
+        message: 'refresh success',
       };
-      res.status(200).send(result);
-    });
-  }
-
-  async refresh(req: Request, res: Response) {
-    const { token } = req.cookies;
-    if (!token) {
-      res.status(400).send(noRefreshToken);
-      return;
+    } catch (error) {
+      Logger.error(error);
+      return emailOrPhoneNotFound;
     }
-    await verifyToken(token)
-      .then(async (payload) => {
-        let user;
-        if (payload.type === LoginType.email) {
-          user = await this.prisma.users.findFirst({ where: { email: payload.login } });
-        } else if (payload.type === LoginType.phone) {
-          user = await this.prisma.users.findFirst({ where: { phone: payload.login } });
-        }
-        if (!user) {
-          res.status(400).send('not correct user data');
-          return;
-        }
-        const refreshToken = generateRefreshToken({
-          id: user.id,
-          login: payload.login,
-          type: payload.type,
-        });
-        const accessToken = generateAccessToken({
-          id: user.id,
-          login: payload.login,
-          type: payload.type,
-        });
-        res.status(200).send({ accessToken, refreshToken });
-      })
-      .catch((error) => {
-        Logger.error(error);
-        res.status(400).send('not correct refresh token');
-        return;
-      });
   }
 
   async profile(req: Request, res: Response) {

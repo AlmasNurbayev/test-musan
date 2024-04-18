@@ -1,8 +1,13 @@
-import { NextFunction, Response, Request  } from 'express';
+import { NextFunction, Response, Request } from 'express';
 import { Logger } from '../shared/logger';
 import { ResponseHTTP } from '../shared/interfaces';
 
-export function errorHandler(err: Error, req: Request, res: Response, next: NextFunction) {
+export function errorHandler(
+  err: Error,
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   if (res.headersSent) {
     return next(err);
   }

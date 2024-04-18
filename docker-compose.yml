@@ -52,7 +52,8 @@ services:
       EMAIL_PORT: ${EMAIL_PORT}
       EMAIL_USER: ${EMAIL_USER}
       EMAIL_PASS: ${EMAIL_PASS}
-
+      EMAIL_SECURE: ${EMAIL_SECURE}
+      
       SMSC_HOST: ${SMSC_HOST}
       SMSC_USER: ${SMSC_USER}
       SMSC_PASS: ${SMSC_PASS}

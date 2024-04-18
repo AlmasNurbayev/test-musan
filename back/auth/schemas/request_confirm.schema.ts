@@ -11,3 +11,5 @@ export const AuthRequestConfirmSchema = z.object({
     type: z.nativeEnum(LoginType),
   }),
 });
+
+export type AuthRequestConfirmType = z.infer<typeof AuthRequestConfirmSchema.shape.query>;
