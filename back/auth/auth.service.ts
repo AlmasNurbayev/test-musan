@@ -64,7 +64,7 @@ export class AuthService {
     const { password: _, ...userWithoutPassword } = user; // eslint-disable-line
     return {
       error: false,
-      statusCode: 200,
+      statusCode: 201,
       message: 'user created',
       data: userWithoutPassword,
     };

@@ -37,7 +37,6 @@ export function AuthController() {
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const result = await authService.login(req.body);
-        console.log(result);
         if (result.statusCode === 200) {
           res.cookie('token', result.data.refreshToken, { httpOnly: true });
           req.session.user = result.data.user;
