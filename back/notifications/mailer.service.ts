@@ -26,7 +26,7 @@ export class MailerService {
       });
       return { data: info };
     } catch (error) {
-      Logger.warning(error);
+      Logger.error(error);
       return { error: error };
     }
   }

@@ -2,265 +2,253 @@ import Redis from 'ioredis';
 import { MailerService } from '../notifications/mailer.service';
 import { SmscService } from '../notifications/sms.service';
 import { Request, Response } from 'express';
-import { configRedisUser } from '../config';
+import { config } from '../config';
+import { LoginType } from './schemas/request_confirm.schema';
+import {
+  confirmNotFound,
+  emailOrPhoneNotConfirmed,
+  existUser,
+  loginOrPasswordNotCorrect,
+  noRefreshToken,
+  unauthorized,
+} from '../middlewares/exceptions/auth.exceptions';
+import { error500 } from '../middlewares/exceptions/common.exceptions';
+import * as bcrypt from 'bcrypt';
+import { PrismaClient } from '@prisma/client';
+import { ResponseHTTP } from '../shared/interfaces';
+import { generateAccessToken, generateRefreshToken, verifyToken } from './jwt_helpers';
+import { Logger } from '../shared/logger';
+import { session } from 'passport';
 
 export class AuthService {
   constructor(
     private mailerService = new MailerService(),
     private smscService = new SmscService(),
-    private redis = new Redis(configRedisUser),
+    private redisConfirms = config.redisConfirms.client,
+    private prisma = new PrismaClient(),
   ) {}
 
   public async register(req: Request, res: Response) {
     const { name, email, phone, password } = req.body;
-    const cachedData = await this.redis.set('1', 'cachedData');
-    console.log(cachedData);
-    
-    // if (!phone && !email) {
-    //   res.status(400).send({ error: 'not found email or phone' });
-    // }
+    const confirmEmail = await this.redisConfirms.get(email);
+    const confirmPhone = await this.redisConfirms.get(phone);
 
-    // if (email) {
-    //   const is_duplicate = await db.query.users.findFirst({
-    //     where: and(eq(users.email, email)),
-    //   });
-    //   if (is_duplicate) {
-    //     res
-    //       .status(400)
-    //       .send({ issues: [{ message: 'email уже существует', path: ['email'] }] });
-    //     // отправляем ошибку в формате Zod чтобы обрабатывать одинаково
-    //     return;
-    //   }
-    //   const confirm = await db.query.confirms.findFirst({
-    //     where: and(
-    //       eq(confirms.address, email),
-    //       eq(confirms.type, LoginTypeEnum.email),
-    //       isNotNull(confirms.confirmed_at),
-    //     ),
-    //   });
-    //   if (!confirm) {
-    //     res.status(400).send({ error: `not confirmed ${email}` });
-    //     return;
-    //   }
-    // }
-    // if (!email && phone) {
-    //   const is_duplicate = await db.query.users.findFirst({
-    //     where: and(eq(users.phone, phone)),
-    //   });
-    //   if (is_duplicate) {
-    //     // отправляем ошибку в формате Zod чтобы обрабатывать одинаково
-    //     res
-    //       .status(400)
-    //       .send({ issues: [{ message: 'телефон уже существует', path: ['phone'] }] });
-    //     return;
-    //   }
-    //   const confirm = await db.query.confirms.findFirst({
-    //     where: and(
-    //       eq(confirms.address, phone),
-    //       eq(confirms.type, LoginTypeEnum.phone),
-    //       isNotNull(confirms.confirmed_at),
-    //     ),
-    //   });
-    //   if (!confirm) {
-    //     res.status(400).send({ error: `not confirmed ${phone}` });
-    //     return;
-    //   }
-    // }
+    if (!confirmEmail && !confirmPhone) {
+      res.status(400).send(emailOrPhoneNotConfirmed);
+      return;
+    }
 
-    // const hash = await bcrypt.hash(password, 10);
-    // try {
-    //   const [user] = await db
-    //     .insert(users)
-    //     .values({
-    //       name,
-    //       email,
-    //       phone,
-    //       password: hash,
-    //     })
-    //     .returning();
-    //   const userWithoutPassword = { ...user } as Partial<typeof user>;
-    //   delete userWithoutPassword?.password;
-    //   res.status(200).send({ message: 'success', user: userWithoutPassword });
-    //   return;
-    // } catch (error) {
-    //   res.status(500).send({ error: error });
-    //   return;
-    // }
-  }
+    if (confirmEmail && JSON.parse(String(confirmEmail)).confirmed_at === 0) {
+      res.status(400).send(emailOrPhoneNotConfirmed);
+      return;
+    }
 
-  async handleSendConfirm(req: Request, res: Response) {
-    // const { address, type } = req.query;
-    // const result = await this.sendNewConfirm(String(address), type as LoginTypeEnum);
-    // if (result.transport[type as LoginTypeEnum] === 'error') {
-    //   res.status(400).send(result);
-    //   return;
-    // }
-    // if (result.transport) {
-    //   res.status(200).send(result);
-    //   return;
-    // }
+    if (confirmPhone && JSON.parse(String(confirmPhone)).confirmed_at === 0) {
+      res.status(400).send(emailOrPhoneNotConfirmed);
+      return;
+    }
+
+    const exUser = await this.prisma.users.findFirst({
+      where: {
+        OR: [{ email }, { phone }],
+      },
+    });
+    if (exUser) {
+      res.status(400).send(existUser);
+      return;
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+    const user = await this.prisma.users.create({
+      data: { ...req.body, password: hash },
+    });
+
+    const { password: _, ...userWithoutPassword } = user; // eslint-disable-line
+    const result: ResponseHTTP = {
+      error: false,
+      statusCode: 200,
+      message: 'user created',
+      data: userWithoutPassword,
+    };
+    res.status(200).send(result);
   }
 
   async requestConfirm(req: Request, res: Response) {
-    // let confirm = await db.query.confirms.findFirst({
-    //   where: and(eq(confirms.address, address), eq(confirms.type, type)),
-    // });
-    // const confirm_code = Math.floor(Math.random() * 89999 + 10000);
-    // if (!confirm) {
-    //   // создаем запись
-    //   [confirm] = await db
-    //     .insert(confirms)
-    //     .values({
-    //       address,
-    //       type,
-    //       confirm_code,
-    //       requested_at: new Date(),
-    //     })
-    //     .returning();
-    // } else {
-    //   if (confirm.requested_at && Date.now() < confirm.requested_at.getTime() + 60000) {
-    //     // в течение 60 секунд нельзя генерировать новый код
-    //     //return { error: 'Query is temporary unavailable, try after 1 minute' };
-    //   }
-    //   // обновляем запись
-    //   await db
-    //     .update(confirms)
-    //     .set({ confirm_code, requested_at: new Date() })
-    //     .where(eq(confirms.id, confirm.id));
-    // }
-    // const transport = {} as { email?: string; phone?: string };
-    // if (type === LoginTypeEnum.email) {
-    //   const emailResult = await this.mailerService.sendMail({
-    //     from: 'info@cipo.kz',
-    //     to: address,
-    //     subject: 'Код подтверждения email',
-    //     text: `Код для подтверждения почты: ${confirm_code}`,
-    //     html: `Код для подтверждения почты: <b>${confirm_code}</b>`,
-    //   });
-    //   if (emailResult.data) {
-    //     Logger.debug(emailResult.data);
-    //     transport.email = 'success';
-    //   } else if (emailResult.error) {
-    //     transport.email = 'error';
-    //   }
-    // }
-    // if (type === LoginTypeEnum.phone) {
-    //   const smsResult = await this.smscService.sendSms(
-    //     address,
-    //     `Код подтверждения: ${confirm_code}`,
-    //   );
-    //   if (smsResult.data) {
-    //     transport.phone = 'success';
-    //   } else if (smsResult.error) {
-    //     transport.phone = 'error';
-    //   }
-    // }
-    // return { transport };
+    const { login, type } = req.query;
+    const confirm_code = Math.floor(Math.random() * 89999 + 10000);
+    this.redisConfirms.set(
+      String(login),
+      JSON.stringify({
+        type,
+        code: confirm_code,
+        created_at: Date.now(),
+        confirmed_at: 0,
+      }),
+      'EX',
+      60 * 60, // 1h
+    );
+
+    if (type === LoginType.email) {
+      try {
+        this.mailerService.sendMail({
+          from: 'info@cipo.kz',
+          to: String(login),
+          subject: 'Код подтверждения email',
+          text: `Код для подтверждения почты: ${confirm_code}`,
+          html: `Код для подтверждения почты: <b>${confirm_code}</b>`,
+        });
+      } catch (error) {
+        res.status(200).send(error500(error, null));
+      }
+    }
+    if (type === LoginType.phone) {
+      this.smscService.sendSms(String(login), `Код подтверждения: ${confirm_code}`);
+    }
+    res.status(200).send({
+      statusCode: 200,
+      message: 'code sended',
+      error: false,
+      data: null,
+    });
+    return;
   }
 
   async submitConfirm(req: Request, res: Response) {
-    // const { code, address, type } = req.query;
-    // if (!code || !address || !type) {
-    //   res.status(400).send({ error: 'not found all data' });
-    //   return;
-    // }
-    // const result = await db
-    //   .update(confirms)
-    //   .set({ confirmed_at: new Date() })
-    //   .where(
-    //     and(
-    //       eq(confirms.address, String(address)),
-    //       eq(confirms.confirm_code, Number(code)),
-    //       eq(confirms.type, String(type)),
-    //     ),
-    //   )
-    //   .returning();
-    // if (result.length === 0) {
-    //   res.status(400).send({
-    //     issues: [{ message: 'неверный код', path: ['code'] }],
-    //   });
-    // } else {
-    //   res.status(200).send({ message: 'success' });
-    // }
+    const { code, login, type } = req.query;
+    const confirmObject = await this.redisConfirms.get(String(login));
+    if (!confirmObject) {
+      res.status(400).send(confirmNotFound);
+    }
+    const parsedConfirm = JSON.parse(confirmObject ? confirmObject : '');
+
+    if (parsedConfirm.type !== type) {
+      res.status(400).send(confirmNotFound);
+    }
+    if (parsedConfirm.code !== parseInt(String(code))) {
+      res.status(400).send(confirmNotFound);
+    }
+
+    await this.redisConfirms.set(
+      String(login),
+      JSON.stringify({
+        ...parsedConfirm,
+        confirmed_at: Date.now(),
+      }),
+    );
+    res.status(200).send({
+      statusCode: 200,
+      message: 'success confirmed',
+      error: false,
+      data: null,
+    });
+    return;
   }
 
   async login(req: Request, res: Response) {
-    // const { email, phone, password } = req.body;
-    // if (!email && !phone) {
-    //   res.status(400).send({ error: 'not found credentials' });
-    // }
-    // let user;
-    // if (email) {
-    //   user = await db.query.users.findFirst({ where: eq(users.email, email) });
-    // }
-    // if (phone) {
-    //   user = await db.query.users.findFirst({ where: eq(users.phone, phone) });
-    // }
-    // if (!user) {
-    //   res.status(400).send({
-    //     issues: [
-    //       { message: 'неверные учетные данные', path: ['phone', 'email', 'password'] },
-    //     ],
-    //   });
-    // }
-    // const isValidPassword = await bcrypt.compare(password, String(user?.password));
-    // if (isValidPassword) {
-    //   const accessToken = generateAccessToken({
-    //     id: Number(user?.id),
-    //     email: user?.email || '',
-    //     phone: user?.phone || '',
-    //   });
-    //   const refreshToken = generateRefreshToken({
-    //     id: Number(user?.id),
-    //     email: user?.email || '',
-    //     phone: user?.phone || '',
-    //   });
-    //   res.cookie('token_auth_sample', refreshToken, { httpOnly: true });
-    //   //res.appendHeader('Set-Cookie', 'token=encryptedstring; HttpOnly');
-    //   //res.appendHeader('Access-Control-Allow-Credentials', 'true');
-    //   const userWithoutPassword = { ...user } as Partial<typeof user>;
-    //   delete userWithoutPassword?.password;
-    //   res.status(200).send({ data: userWithoutPassword, accessToken, refreshToken });
-    // } else {
-    //   res.status(400).send({
-    //     issues: [
-    //       { message: 'неверные учетные данные', path: ['phone', 'email', 'password'] },
-    //     ],
-    //   });
-    //
+    const { login, type, password } = req.body;
+    let user;
+    if (type === LoginType.email) {
+      user = await this.prisma.users.findFirst({ where: { email: login } });
+    } else if (type === LoginType.phone) {
+      user = await this.prisma.users.findFirst({ where: { phone: login } });
+    }
+    if (!user) {
+      res.status(400).send(loginOrPasswordNotCorrect);
+      return;
+    }
+    const isValidPassword = await bcrypt.compare(password, String(user?.password));
+    if (!isValidPassword) {
+      res.status(400).send(loginOrPasswordNotCorrect);
+    }
+
+    const accessToken = generateAccessToken({
+      id: Number(user?.id),
+      type,
+      login,
+    });
+    const refreshToken = generateRefreshToken({
+      id: Number(user?.id),
+      type,
+      login,
+    });
+    res.cookie('token', refreshToken, { httpOnly: true });
+
+    const { password: _, ...userWithoutPassword } = user; // eslint-disable-line
+    req.session.user = userWithoutPassword;
+
+    const result: ResponseHTTP = {
+      error: false,
+      statusCode: 200,
+      message: 'login success',
+      data: { user: userWithoutPassword, accessToken, refreshToken },
+    };
+    res.status(200).send(result);
+  }
+
+  async logout(req: Request, res: Response) {
+    req.session.destroy((err) => {
+      if (err) {
+        Logger.error(err);
+        res.status(400).send(error500('error logout', null));
+      }
+      const result: ResponseHTTP = {
+        error: false,
+        statusCode: 200,
+        message: 'success logout',
+        data: null,
+      };
+      res.status(200).send(result);
+    });
   }
 
   async refresh(req: Request, res: Response) {
-    //   const { token_auth_sample } = req.cookies;
-    //   if (!token_auth_sample) {
-    //     res.status(400).send({ error: 'not found refresh token' });
-    //     return;
-    //   }
-    //   await verifyToken(token_auth_sample)
-    //     .then(async (payload) => {
-    //       const user = await db.query.users.findFirst({
-    //         where: eq(users.id, payload.id),
-    //       });
-    //       if (!user) {
-    //         res.status(400).send('not correct user data');
-    //         return;
-    //       }
-    //       const refreshToken = generateRefreshToken({
-    //         id: user.id,
-    //         email: user.email || undefined,
-    //         phone: user.phone || undefined,
-    //       });
-    //       const accessToken = generateAccessToken({
-    //         id: user.id,
-    //         email: user.email || undefined,
-    //         phone: user.phone || undefined,
-    //       });
-    //       res.status(200).send({ accessToken, refreshToken });
-    //     })
-    //     .catch((error) => {
-    //       Logger.error(error);
-    //       res.status(400).send('not correct refresh token');
-    //       return;
-    //     });
+    const { token } = req.cookies;
+    if (!token) {
+      res.status(400).send(noRefreshToken);
+      return;
+    }
+    await verifyToken(token)
+      .then(async (payload) => {
+        let user;
+        if (payload.type === LoginType.email) {
+          user = await this.prisma.users.findFirst({ where: { email: payload.login } });
+        } else if (payload.type === LoginType.phone) {
+          user = await this.prisma.users.findFirst({ where: { phone: payload.login } });
+        }
+        if (!user) {
+          res.status(400).send('not correct user data');
+          return;
+        }
+        const refreshToken = generateRefreshToken({
+          id: user.id,
+          login: payload.login,
+          type: payload.type,
+        });
+        const accessToken = generateAccessToken({
+          id: user.id,
+          login: payload.login,
+          type: payload.type,
+        });
+        res.status(200).send({ accessToken, refreshToken });
+      })
+      .catch((error) => {
+        Logger.error(error);
+        res.status(400).send('not correct refresh token');
+        return;
+      });
+  }
+
+  async profile(req: Request, res: Response) {
+    if (!req.session.user) {
+      res.status(401).send(unauthorized);
+      return;
+    }
+    res.status(200).send({
+      statusCode: 200,
+      message: 'success get user',
+      error: false,
+      data: req.session.user,
+    });
+    return;
   }
 }

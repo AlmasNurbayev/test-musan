@@ -14,7 +14,7 @@ datasource db {
 }
 
 model Users {
-  id    BigInt     @id @default(autoincrement())
+  id    Int     @id @default(autoincrement())
   email String @unique
   phone String @unique
   password String
@@ -25,12 +25,12 @@ model Users {
 }
 
 model Notes {
-  id        BigInt     @id @default(autoincrement())
+  id        Int     @id @default(autoincrement())
   title     String
   data   String?
   published Boolean @default(false)
   author    Users   @relation(fields: [user_id], references: [id])
-  user_id  BigInt
+  user_id  Int
   created_at  DateTime   @default(now())
   updated_at DateTime @updatedAt
 
