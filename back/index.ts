@@ -38,7 +38,7 @@ function bootstrap() {
   app.use(passport.session());
 
   Logger.info('Open cors for >>> ' + config.front_url);
-  app.get('/', authJWT, (req, res) => {
+  app.get('/', (req, res) => {
     res.send('Hello world');
   });
   app.use('/auth', AuthController());
