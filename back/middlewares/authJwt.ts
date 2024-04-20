@@ -10,13 +10,15 @@ export async function authJWT(req: Request, res: Response, next: NextFunction) {
     { session: false },
     (err: Error | null, user: JwtPayload) => {
       if (err || !user) {
-        Logger.warn(err);
+        Logger.warn('authJWT error or not payload: ', err);
         return res.status(401).send(unauthorized);
       }
       if (!req.session.user) {
+        Logger.warn('authJWT no session: ', err);
         return res.status(401).send(unauthorized);
       }
       if (req.session.user.id !== user.id) {
+        Logger.warn('authJWT session id not equal payload.id: ', err);
         return res.status(401).send(unauthorized);
       }
       return next();
