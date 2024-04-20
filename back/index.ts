@@ -37,6 +37,12 @@ function bootstrap() {
   passport.use(JwtStrategy);
   app.use(passport.session());
 
+  app.use((req, res, next) => {
+    // для перехвата всех ответов в конце цепочки
+    res.on('finish', () => endTiming(req, res, next));
+    next();
+  });
+
   Logger.info('Open cors for >>> ' + config.front_url);
   app.get('/', (req, res) => {
     res.send('Hello world');
@@ -50,12 +56,9 @@ function bootstrap() {
 
   // закрывающие роуты
   app.use(errorHandler);
-  app.use(handler404);
-  app.use((req, res, next) => {
-    // для перехвата всех ответов в конце цепочки
-    res.on('finish', () => endTiming(req, res, next));
-    next();
-  });
+  //- не совместим с res.on('finish') в endTiming,
+  // вызывает ошибку 'Cannot set headers after they are sent to the client'
+  //app.use(handler404);
 
   app.listen(config.express_port, () => {
     Logger.info(

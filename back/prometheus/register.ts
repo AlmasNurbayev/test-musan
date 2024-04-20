@@ -16,4 +16,12 @@ export const http_request_duration_milliseconds = new client.Histogram({
   buckets: [1, 10, 50, 100, 200, 500, 1000],
 });
 registerM.registerMetric(http_request_duration_milliseconds);
+
+export const httpRequestCounter = new client.Counter({
+  name: 'http_requests_total',
+  help: 'Total number of HTTP requests',
+  labelNames: ['method', 'route', 'statusCode', 'originalUrl'],
+});
+registerM.registerMetric(httpRequestCounter);
+
 Logger.info('Prometheus metrics registered');
