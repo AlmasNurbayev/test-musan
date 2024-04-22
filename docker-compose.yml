@@ -33,6 +33,11 @@ services:
       - 'db'
       - 'redis'
     working_dir: /app
+    networks:
+      kofd:
+         aliases:
+           - back-musan.local
+      default:
     volumes:
       - ./back/:/app
     ports:
@@ -58,3 +63,8 @@ services:
       SMSC_HOST: ${SMSC_HOST}
       SMSC_USER: ${SMSC_USER}
       SMSC_PASS: ${SMSC_PASS}
+
+networks:
+  kofd:
+    name: 'kofd'
+  default:         
