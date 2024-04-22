@@ -5,9 +5,10 @@ import { JwtPayload } from '../../shared/interfaces';
 export const JwtStrategy = new Strategy(
   {
     jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-    secretOrKey: config.secret_jwt,
+    secretOrKey: config.secretJwt,
+    passReqToCallback: true,
   },
-  (payload: JwtPayload, done) => {
+  (req, payload: JwtPayload, done) => {
     return done(undefined, payload);
   },
 );

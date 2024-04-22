@@ -3,19 +3,21 @@ import 'dotenv/config';
 import Redis from 'ioredis';
 
 export const config = {
-  secret_jwt: process.env.SECRET_JWT || 'secret_la_la',
-  express_port: process.env.EXPRESS_PORT,
-  express_port_external: process.env.EXPRESS_PORT_EXTERNAL,
-  front_url: process.env.FRONT_URL,
-
+  secretJwt: process.env.SECRET_JWT || 'secret_la_la',
+  expressPort: process.env.EXPRESS_PORT,
+  expressPortExternal: process.env.EXPRESS_PORT_EXTERNAL,
+  frontUrl: process.env.FRONT_URL,
+  testUser: {
+    name: process.env.TEST_USER_NAME || 'test',
+    email: process.env.TEST_USER_EMAIL || 'test@test.com',
+    password: process.env.TEST_USER_PASSWORD || 'T314passwordE!271',
+  },
   auth: {
     confirmDelayMS: 1000 * 60, // 1 minute
   },
-
   notes: {
     rateLimitCreate: 3, // requests per minute
   },
-
   redisConfirms: {
     client: new Redis({
       port: 6379,
@@ -24,7 +26,6 @@ export const config = {
       db: 0,
     }),
   },
-
   redisNotesCache: {
     client: new Redis({
       port: 6379,
@@ -33,7 +34,6 @@ export const config = {
       db: 2,
     }),
   },
-
   redisSessions: {
     store: new RedisStore({
       client: new Redis({

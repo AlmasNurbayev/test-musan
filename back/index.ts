@@ -4,11 +4,9 @@ import cookieParser from 'cookie-parser';
 import { config } from './config';
 import { Logger } from './shared/logger';
 import { errorHandler } from './middlewares/handler_other_error';
-import { handler404 } from './middlewares/handler404';
 import { AuthController } from './auth/auth.controller';
 import session from 'express-session';
 import { SessionUser } from './shared/interfaces';
-import { authJWT } from './middlewares/authJwt';
 import passport from 'passport';
 import { JwtStrategy } from './auth/strategies/jwt.strategy';
 import { NotesController } from './modules/notes/notes.controller';
@@ -17,6 +15,8 @@ import { startTiming } from './prometheus/start_timing';
 import { endTiming } from './prometheus/end_timing';
 import { registerM } from './prometheus/register';
 import helmet from 'helmet';
+import { Seeds } from './prisma/seed';
+import http from 'http';
 
 declare module 'express-session' {
   interface Session {
@@ -24,18 +24,23 @@ declare module 'express-session' {
   }
 }
 
+export let serverHTTP: http.Server;
+export const app = express();
+
 function bootstrap() {
   Logger.warn('Back service init');
-  const app = express();
-  app.use(helmet({ contentSecurityPolicy: false }));
+  //const app = express();
+  app.use(helmet());
   app.use(startTiming);
-  app.use(cors({ origin: config.front_url, credentials: true }));
+  app.use(cors({ origin: config.frontUrl, credentials: true }));
 
   app.use(express.json());
   app.use(cookieParser());
   app.use(session(config.redisSessions));
+  passport.initialize();
   passport.use(JwtStrategy);
   app.use(passport.session());
+  
 
   app.use((req, res, next) => {
     // для перехвата всех ответов в конце цепочки
@@ -43,7 +48,7 @@ function bootstrap() {
     next();
   });
 
-  Logger.info('Open cors for >>> ' + config.front_url);
+  Logger.info('Open cors for >>> ' + config.frontUrl);
   app.get('/', (req, res) => {
     res.send('Hello world');
   });
@@ -60,9 +65,11 @@ function bootstrap() {
   // вызывает ошибку 'Cannot set headers after they are sent to the client'
   //app.use(handler404);
 
-  app.listen(config.express_port, () => {
+  Seeds();
+  serverHTTP = http.createServer(app);
+  serverHTTP.listen(config.expressPort, () => {
     Logger.info(
-      `Back service started at the port  ${config.express_port} >>> ${config.express_port_external}`,
+      `Back service started at the port  ${config.expressPort} >>> ${config.expressPortExternal}`,
     );
   });
 }

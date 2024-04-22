@@ -6,7 +6,7 @@ export const NotesUpdateSchema = z.object({
     data: z.string().optional(),
     published: z.boolean().optional(),
   }),
-  query: z.object({
+  params: z.object({
     id: z
       .string()
       .transform((val) => Number(val))
