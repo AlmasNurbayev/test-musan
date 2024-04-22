@@ -8,6 +8,7 @@ import { unauthorized } from '../../middlewares/exceptions/auth.exceptions';
 import { NotesUpdateSchema } from './schemas/notes_update.schema';
 import { Logger } from '../../shared/logger';
 import { rateLimitNotesCreate } from '../../middlewares/rateLimiters/rate_limit.notes.create';
+import { NotesListSchema } from './schemas/notes_list.schema';
 
 export function NotesController() {
   const router = Router();
@@ -37,7 +38,7 @@ export function NotesController() {
   router.get(
     '/',
     (req: Request, res: Response, next: NextFunction) => {
-      validateSchema(req, res, next, NotesCreateSchema);
+      validateSchema(req, res, next, NotesListSchema);
     },
     authJWT,
     async (req: Request, res: Response, next: NextFunction) => {
