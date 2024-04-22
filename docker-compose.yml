@@ -26,19 +26,6 @@ services:
     ports:
       - ${REDISPORT_EXTERNAL}:6379
 
-  prometheus:
-    image: prom/prometheus:v2.51.2
-    volumes:
-      - prometheus_data:/prometheus
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-    environment:
-      TZ: 'Asia/Qyzylorda'
-      PROMETHEUS_PORT_EXTERNAL : ${PROMETHEUS_PORT_EXTERNAL}      
-    ports:
-      - ${PROMETHEUS_PORT_EXTERNAL}:9090      
-
   back:
     image: node:20.11.1
     command: bash -c "npm install && npm run migrate:dev && npm run watch"
@@ -71,6 +58,3 @@ services:
       SMSC_HOST: ${SMSC_HOST}
       SMSC_USER: ${SMSC_USER}
       SMSC_PASS: ${SMSC_PASS}
-
-volumes:
-  prometheus_data: {}
