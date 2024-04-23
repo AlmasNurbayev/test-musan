@@ -1,20 +1,20 @@
-import express from "express";
-import { Logger } from "./shared/logger";
-import helmet from "helmet";
-import { startTiming } from "./prometheus/start_timing";
-import cors from "cors";
-import cookieParser from "cookie-parser";
-import session from "express-session";
-import passport from "passport";
-import { JwtStrategy } from "./auth/strategies/jwt.strategy";
-import { endTiming } from "./prometheus/end_timing";
-import { AuthController } from "./auth/auth.controller";
-import { NotesController } from "./modules/notes/notes.controller";
-import { registerM } from "./prometheus/register";
-import { config } from "./config";
-import { errorHandler } from "./middlewares/handler_other_error";
+import express from 'express';
+import { Logger } from './shared/logger';
+import helmet from 'helmet';
+import { startTiming } from './prometheus/start_timing';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import session from 'express-session';
+import passport from 'passport';
+import { JwtStrategy } from './auth/strategies/jwt.strategy';
+import { endTiming } from './prometheus/end_timing';
+import { AuthController } from './auth/auth.controller';
+import { NotesController } from './modules/notes/notes.controller';
+import { registerM } from './prometheus/register';
+import { config } from './config';
+import { errorHandler } from './middlewares/handler_other_error';
 import './prometheus/register';
-import { Seeds } from "./prisma/seed";
+import { Seeds } from './prisma/seed';
 
 export function bootstrap(): express.Application {
   const app = express();
@@ -30,7 +30,6 @@ export function bootstrap(): express.Application {
   passport.initialize();
   passport.use(JwtStrategy);
   app.use(passport.session());
-  
 
   app.use((req, res, next) => {
     // для перехвата всех ответов в конце цепочки
@@ -56,5 +55,5 @@ export function bootstrap(): express.Application {
   //app.use(handler404);
 
   Seeds();
-  return app
+  return app;
 }

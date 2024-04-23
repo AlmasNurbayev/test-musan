@@ -57,7 +57,7 @@ export class NotesService {
       error: false,
       statusCode: 200,
       message: 'notes list',
-      data: {notes, count},
+      data: { notes, count },
     };
   }
 

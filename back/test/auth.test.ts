@@ -39,15 +39,15 @@ describe('Auth', async () => {
     requestWithSupertest = supertest(server);
 
     const response = await requestWithSupertest
-    .post('/auth/login')
-    .send(testUserLogin)
-    .expect(200);
+      .post('/auth/login')
+      .send(testUserLogin)
+      .expect(200);
     cookie = response.headers['set-cookie'];
     accessToken = await response.body.data.accessToken;
   });
   afterAll(async () => {
     console.log('server closing...');
-    server.close();
+    //server.close();
     //process.exit(0);
   });
 

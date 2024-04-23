@@ -4,6 +4,7 @@ import { Logger } from './shared/logger';
 import { SessionUser } from './shared/interfaces';
 import http from 'http';
 import { bootstrap } from './bootstrap';
+import { rmqInit } from './rmq/rmqInit';
 
 declare module 'express-session' {
   interface Session {
@@ -12,6 +13,8 @@ declare module 'express-session' {
 }
 
 function runServer(app: express.Application) {
+  rmqInit();
+
   const serverHTTP = http.createServer(app);
   serverHTTP.listen(config.expressPort, () => {
     Logger.info(

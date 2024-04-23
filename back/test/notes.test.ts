@@ -8,7 +8,6 @@ import { afterAll, assert, beforeAll, describe, it } from 'vitest';
 import { bootstrap } from '../bootstrap';
 import express from 'express';
 
-
 describe('Notes', async () => {
   let app: express.Application;
   let requestWithSupertest: TestAgent;
@@ -37,7 +36,6 @@ describe('Notes', async () => {
   };
 
   beforeAll(async () => {
-
     app = bootstrap();
     server = app.listen();
     requestWithSupertest = supertest(server);
@@ -49,7 +47,7 @@ describe('Notes', async () => {
     cookie = response.headers['set-cookie'];
     accessToken = await response.body.data.accessToken;
     testUserId = response.body.data.user.id;
-    
+
     newNote.user_id = testUserId;
     updateNote.user_id = testUserId;
 
@@ -58,7 +56,7 @@ describe('Notes', async () => {
   afterAll(async () => {
     await requestWithSupertest.get('/auth/logout').set('Cookie', cookie).expect(200);
     console.log('server closing...');
-    server.close();
+    //server.close();
     //process.exit(0);
   });
 
@@ -113,11 +111,11 @@ describe('Notes', async () => {
 
   it('fail - GET /notes by random id over 9 000 000', async () => {
     await requestWithSupertest
-      .get('/notes/' + String(Math.random()*900000 + 9000000))
+      .get('/notes/' + String(Math.random() * 900000 + 9000000))
       .set('Authorization', `Bearer ${accessToken}`)
       .set('Cookie', cookie)
       .query({ id: newNoteId })
-      .expect(404)
+      .expect(404);
   });
 
   it('success - update /notes by id', async () => {
@@ -130,7 +128,7 @@ describe('Notes', async () => {
       .expect((res) => {
         assert.strictEqual(res.body.data.title, updateNote.title);
         assert.strictEqual(res.body.data.data, updateNote.data);
-      })
+      });
   });
 
   it('success - delete /notes by id', async () => {
@@ -138,7 +136,7 @@ describe('Notes', async () => {
       .delete('/notes/' + newNoteId)
       .set('Authorization', `Bearer ${accessToken}`)
       .set('Cookie', cookie)
-      .expect(200)
+      .expect(200);
   });
 });
 

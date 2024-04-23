@@ -5,7 +5,7 @@
   "main": "index.ts",
   "type": "module",
   "scripts": {
-    "test": "vitest run --pool=forks",
+    "test": "vitest run --pool=forks --reporter=verbose",
     "watch": "tsx watch ./index.ts",
     "lint": "eslint . --ext .ts",
     "migrate:dev": "prisma migrate dev",
@@ -15,6 +15,7 @@
   "license": "ISC",
   "dependencies": {
     "@prisma/client": "^5.12.1",
+    "amqplib": "^0.10.4",
     "axios": "^1.6.8",
     "bcrypt": "^5.1.1",
     "connect-redis": "^7.1.1",
@@ -34,6 +35,7 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@types/amqplib": "^0.10.5",
     "@types/bcrypt": "^5.0.2",
     "@types/cookie-parser": "^1.4.7",
     "@types/cors": "^2.8.17",

@@ -52,4 +52,11 @@ export const config = {
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     },
   },
+  rmq: {
+    url: `amqp://${process.env.RM_USERNAME}:${process.env.RM_PASSWORD}@${process.env.RM_HOST}:${process.env.RM_PORT}`,
+    persistent: true,
+    input_queue: 'from_nest',
+    output_queue: 'from_back',
+    queueDurable: true,
+  },
 };

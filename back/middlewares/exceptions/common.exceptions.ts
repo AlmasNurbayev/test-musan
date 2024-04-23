@@ -1,6 +1,6 @@
 import { ResponseHTTP } from '../../shared/interfaces';
 
-export function error500(message: unknown, data: any): ResponseHTTP {
+export function error500(message: unknown, data: unknown): ResponseHTTP {
   return {
     error: true,
     message,
