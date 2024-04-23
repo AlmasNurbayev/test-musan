@@ -73,7 +73,7 @@ describe('Notes', async () => {
       .set('Cookie', cookie)
       .expect(200)
       .expect((res) => {
-        assert.ok(Array.isArray(res.body.data));
+        assert.ok(Array.isArray(res.body.data.notes));
       });
   });
 

@@ -52,11 +52,12 @@ export class NotesService {
       skip: skip ? Number(skip) : undefined,
       take: take ? Number(take) : undefined,
     });
+    const count = await this.repository.count({ where });
     return {
       error: false,
       statusCode: 200,
       message: 'notes list',
-      data: notes,
+      data: {notes, count},
     };
   }
 
