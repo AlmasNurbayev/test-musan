@@ -1,0 +1,19 @@
+meta {
+  name: auth - login
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{host}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+      "type": "email",
+      "login": "ntldr@mail.ru",
+      "password": "12345678"
+  }
+}

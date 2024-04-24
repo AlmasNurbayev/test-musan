@@ -5,25 +5,28 @@ import { outputHandler } from './outputHandler';
 
 export async function inputHandler(msg: amqp.ConsumeMessage) {
   const notesService = new NotesService();
-  const data = JSON.parse(msg.content.toString()).data;
-  console.log('received data', data);
+  const allData = JSON.parse(msg.content.toString());
+  const data = allData.data;
+  console.log('received allData', allData);
 
-  try {
-    const result = await notesService.create(
-      {
-        title: data.title,
-        data: data.text,
-      },
-      4,
-    );
-    outputHandler(result);
-  } catch (error) {
-    Logger.error('input RMQ', error);
-    outputHandler({
-      data: { id: data.id },
-      error: true,
-      message: 'error on record this article',
-      statusCode: 500,
-    });
+  if (allData.pattern === 'article_created') {
+    try {
+      const result = await notesService.create(
+        {
+          title: data.title,
+          data: data.text,
+        },
+        4,
+      );
+      outputHandler(result);
+    } catch (error) {
+      Logger.error('input RMQ', error);
+      outputHandler({
+        data: { id: data.id },
+        error: true,
+        message: 'error on record this article',
+        statusCode: 500,
+      });
+    }
   }
 }

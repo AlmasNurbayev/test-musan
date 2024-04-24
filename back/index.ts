@@ -16,16 +16,19 @@ declare module 'express-session' {
 async function runServer(app: express.Application) {
   await rmqInit();
 
-  const serverHTTP = http.createServer(app);
-  serverHTTP.listen(config.expressPort);
+  const server = app.listen(config.expressPort);
   const httpTerminator = createHttpTerminator({
-    server: serverHTTP,
+    server,
   });
   Logger.info(
     `Back service started at the port  ${config.expressPort} >>> ${config.expressPortExternal}`,
   );
 
-  await httpTerminator.terminate();
+  process.on('SIGTERM', async () => {
+    Logger.warn('SIGTERM signal received: closing HTTP server');
+    await httpTerminator.terminate();
+    Logger.warn('HTTP server terminated');
+  });
 }
 
 const appInstance = bootstrap();
