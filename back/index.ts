@@ -5,6 +5,7 @@ import { SessionUser } from './shared/interfaces';
 import http from 'http';
 import { bootstrap } from './bootstrap';
 import { rmqInit } from './rmq/rmqInit';
+import { createHttpTerminator } from 'http-terminator';
 
 declare module 'express-session' {
   interface Session {
@@ -12,15 +13,19 @@ declare module 'express-session' {
   }
 }
 
-function runServer(app: express.Application) {
-  rmqInit();
+async function runServer(app: express.Application) {
+  await rmqInit();
 
   const serverHTTP = http.createServer(app);
-  serverHTTP.listen(config.expressPort, () => {
-    Logger.info(
-      `Back service started at the port  ${config.expressPort} >>> ${config.expressPortExternal}`,
-    );
+  serverHTTP.listen(config.expressPort);
+  const httpTerminator = createHttpTerminator({
+    server: serverHTTP,
   });
+  Logger.info(
+    `Back service started at the port  ${config.expressPort} >>> ${config.expressPortExternal}`,
+  );
+
+  await httpTerminator.terminate();
 }
 
 const appInstance = bootstrap();
