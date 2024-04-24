@@ -1,0 +1,17 @@
+meta {
+  name: auth - submit_confirm
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{host}}/auth/submit_confirm?type=email&code=16982&login=ntldrzic@gmail.com
+  body: none
+  auth: none
+}
+
+query {
+  type: email
+  code: 16982
+  login: ntldrzic@gmail.com
+}

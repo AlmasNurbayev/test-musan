@@ -16,9 +16,10 @@ declare module 'express-session' {
 async function runServer(app: express.Application) {
   await rmqInit();
 
-  const server = app.listen(config.expressPort);
+  const serverHTTP = http.createServer(app);
+  serverHTTP.listen(config.expressPort);
   const httpTerminator = createHttpTerminator({
-    server,
+    server: serverHTTP,
   });
   Logger.info(
     `Back service started at the port  ${config.expressPort} >>> ${config.expressPortExternal}`,

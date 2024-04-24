@@ -1,0 +1,19 @@
+meta {
+  name: auth - register
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{host}}/auth/register
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+      "phone": "77015139614",
+      "password": "12345678",
+      "name": "almas"
+  }
+}

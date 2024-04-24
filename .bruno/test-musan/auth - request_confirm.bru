@@ -1,0 +1,16 @@
+meta {
+  name: auth - request_confirm
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{host}}/auth/request_confirm?type=email&login=ntldrzic@gmail.com
+  body: none
+  auth: none
+}
+
+query {
+  type: email
+  login: ntldrzic@gmail.com
+}
